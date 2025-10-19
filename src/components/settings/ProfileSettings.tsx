@@ -1,23 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { Database } from '@/types/database.types';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
 interface ProfileSettingsProps {
   userEmail: string;
 }
 
 export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: userEmail,
     phone: '',
     jobTitle: '',
     bio: '',
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const supabase = createClient();
+
+  // Fetch profile data on mount
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setProfile(data);
+        setFormData({
+          firstName: data.first_name || '',
+          lastName: data.last_name || '',
+          phone: data.phone || '',
+          jobTitle: data.job_title || '',
+          bio: data.bio || '',
+        });
+        setAvatarPreview(data.avatar_url);
+      }
+    } catch (error: any) {
+      console.error('Error fetching profile:', error.message);
+      setMessage({ type: 'error', text: 'Failed to load profile' });
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -30,10 +73,56 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Save to database
+    setIsSaving(true);
+    setMessage(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const updates: ProfileUpdate = {
+        first_name: formData.firstName || null,
+        last_name: formData.lastName || null,
+        phone: formData.phone || null,
+        job_title: formData.jobTitle || null,
+        bio: formData.bio || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditing(false);
+      await fetchProfile(); // Refresh profile data
+    } catch (error: any) {
+      console.error('Error updating profile:', error.message);
+      setMessage({ type: 'error', text: error.message || 'Failed to update profile' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form to original profile data
+    if (profile) {
+      setFormData({
+        firstName: profile.first_name || '',
+        lastName: profile.last_name || '',
+        phone: profile.phone || '',
+        jobTitle: profile.job_title || '',
+        bio: profile.bio || '',
+      });
+      setAvatarPreview(profile.avatar_url);
+    }
     setIsEditing(false);
+    setMessage(null);
   };
 
   return (
@@ -54,6 +143,19 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
             </button>
           )}
         </div>
+
+        {/* Success/Error Message */}
+        {message && (
+          <div
+            className={`mb-6 p-4 rounded-lg ${
+              message.type === 'success'
+                ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {/* Avatar Upload */}
@@ -133,7 +235,7 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
               <input
                 id="email"
                 type="email"
-                value={formData.email}
+                value={userEmail}
                 disabled
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
               />
@@ -190,14 +292,16 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
             <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                disabled={isSaving}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Changes
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
               <button
                 type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

@@ -1,8 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { Database } from '@/types/database.types';
+
+// Type definitions for user preferences
+type UserPreferences = Database['public']['Tables']['user_preferences']['Row'];
+type PreferencesUpdate = Database['public']['Tables']['user_preferences']['Update'];
 
 export default function PreferencesSettings() {
+  const [dbPreferences, setDbPreferences] = useState<UserPreferences | null>(null);
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     pushNotifications: false,
@@ -16,17 +23,107 @@ export default function PreferencesSettings() {
     theme: 'light',
   });
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const supabase = createClient();
+
+  // Fetch preferences on mount
+  useEffect(() => {
+    fetchPreferences();
+  }, []);
+
+  const fetchPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setDbPreferences(data);
+        setPreferences({
+          emailNotifications: data.email_notifications,
+          pushNotifications: data.push_notifications,
+          weeklyDigest: data.weekly_digest,
+          productUpdates: data.product_updates,
+          marketingEmails: data.marketing_emails,
+          language: data.language,
+          timezone: data.timezone,
+          currency: data.currency,
+          dateFormat: data.date_format,
+          theme: data.theme,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching preferences:', error.message);
+      setMessage({ type: 'error', text: 'Failed to load preferences' });
+    }
+  };
+
   const handleToggle = (key: keyof typeof preferences) => {
     setPreferences({ ...preferences, [key]: !preferences[key] });
   };
 
-  const handleSave = () => {
-    // TODO: Save to database
-    console.log('Preferences saved:', preferences);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setMessage(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const updates: PreferencesUpdate = {
+        email_notifications: preferences.emailNotifications,
+        push_notifications: preferences.pushNotifications,
+        weekly_digest: preferences.weeklyDigest,
+        product_updates: preferences.productUpdates,
+        marketing_emails: preferences.marketingEmails,
+        language: preferences.language,
+        timezone: preferences.timezone,
+        currency: preferences.currency,
+        date_format: preferences.dateFormat,
+        theme: preferences.theme,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('user_preferences')
+        .update(updates)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Preferences updated successfully!' });
+      await fetchPreferences(); // Refresh preferences data
+    } catch (error: any) {
+      console.error('Error updating preferences:', error.message);
+      setMessage({ type: 'error', text: error.message || 'Failed to update preferences' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="space-y-6">
+      {/* Success/Error Message */}
+      {message && (
+        <div
+          className={`p-4 rounded-lg ${
+            message.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
       {/* Notifications */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-1">Notifications</h2>
@@ -257,9 +354,10 @@ export default function PreferencesSettings() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          disabled={isSaving}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save Preferences
+          {isSaving ? 'Saving...' : 'Save Preferences'}
         </button>
       </div>
     </div>
