@@ -7,6 +7,7 @@ export type Json =
   | Json[]
 
 // Database type definitions generated from Supabase schema
+// Last updated: 2025-10-19
 export interface Database {
   public: {
     Tables: {

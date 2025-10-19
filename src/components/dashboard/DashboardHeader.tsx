@@ -1,7 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { Database } from '@/types/database.types';
 import LogoutButton from '@/components/auth/LogoutButton';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface DashboardHeaderProps {
   userEmail: string;
@@ -9,6 +13,70 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ userEmail }: DashboardHeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const supabase = createClient();
+
+  // Fetch profile data on mount
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch initial profile
+      await fetchProfile();
+
+      // Set up real-time subscription for this user's profile updates
+      channel = supabase
+        .channel('profile-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Profile updated via Realtime:', payload);
+            // Force a complete re-render by creating a new object with timestamp
+            const updatedProfile = { ...payload.new } as Profile;
+            setProfile(updatedProfile);
+          }
+        )
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+        });
+    };
+
+    setupProfile();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      if (data) setProfile(data);
+    } catch (error: any) {
+      console.error('Error fetching profile:', error.message);
+    }
+  };
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-64 z-30">
@@ -57,12 +125,27 @@ export default function DashboardHeader({ userEmail }: DashboardHeaderProps) {
           {/* User Menu */}
           <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">{userEmail.split('@')[0]}</p>
-              <p className="text-xs text-gray-500">Administrator</p>
+              <p className="text-sm font-medium text-gray-900">
+                {profile?.first_name && profile?.last_name
+                  ? `${profile.first_name} ${profile.last_name}`
+                  : userEmail.split('@')[0]}
+              </p>
+              <p className="text-xs text-gray-500">
+                {profile?.job_title || 'Administrator'}
+              </p>
             </div>
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-              {userEmail[0].toUpperCase()}
-            </div>
+            {profile?.avatar_url ? (
+              <img
+                key={profile.updated_at}
+                src={profile.avatar_url}
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                {profile?.first_name?.[0]?.toUpperCase() || userEmail[0].toUpperCase()}
+              </div>
+            )}
           </div>
 
           <LogoutButton />

@@ -24,6 +24,8 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const supabase = createClient();
 
@@ -65,11 +67,113 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'File size must be less than 2MB' });
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setMessage({ type: 'error', text: 'File must be an image' });
+        return;
+      }
+
+      setAvatarFile(file);
+
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadAvatar = async (userId: string): Promise<string | null> => {
+    if (!avatarFile) return null;
+
+    try {
+      setIsUploadingAvatar(true);
+
+      // Delete old avatar if exists
+      if (profile?.avatar_url) {
+        const oldPath = profile.avatar_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([`${userId}/${oldPath}`]);
+        }
+      }
+
+      // Upload new avatar
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${userId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error.message);
+      throw error;
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const deleteAvatar = async () => {
+    if (!profile?.avatar_url) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      setIsUploadingAvatar(true);
+
+      // Extract file path from URL
+      const urlParts = profile.avatar_url.split('/');
+      const fileName = urlParts.pop();
+      if (!fileName) throw new Error('Invalid avatar URL');
+
+      const filePath = `${user.id}/${fileName}`;
+
+      // Delete from storage
+      const { error: deleteError } = await supabase.storage
+        .from('avatars')
+        .remove([filePath]);
+
+      if (deleteError) throw deleteError;
+
+      // Update profile to remove avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarPreview(null);
+      setAvatarFile(null);
+      setMessage({ type: 'success', text: 'Avatar removed successfully!' });
+      await fetchProfile();
+    } catch (error: any) {
+      console.error('Error deleting avatar:', error.message);
+      setMessage({ type: 'error', text: error.message || 'Failed to delete avatar' });
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -82,12 +186,22 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Upload avatar if a new file was selected
+      let avatarUrl = profile?.avatar_url || null;
+      if (avatarFile) {
+        const uploadedUrl = await uploadAvatar(user.id);
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        }
+      }
+
       const updates: ProfileUpdate = {
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
         phone: formData.phone || null,
         job_title: formData.jobTitle || null,
         bio: formData.bio || null,
+        avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -100,6 +214,7 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
 
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setIsEditing(false);
+      setAvatarFile(null); // Clear the file after successful upload
       await fetchProfile(); // Refresh profile data
     } catch (error: any) {
       console.error('Error updating profile:', error.message);
@@ -121,6 +236,7 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
       });
       setAvatarPreview(profile.avatar_url);
     }
+    setAvatarFile(null); // Clear any selected file
     setIsEditing(false);
     setMessage(null);
   };
@@ -176,21 +292,34 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
                 )}
               </div>
               {isEditing && (
-                <div>
-                  <label
-                    htmlFor="avatar-upload"
-                    className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-block"
-                  >
-                    Upload Photo
-                  </label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <label
+                      htmlFor="avatar-upload"
+                      className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors inline-block"
+                    >
+                      {isUploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+                    </label>
+                    {(avatarPreview || profile?.avatar_url) && (
+                      <button
+                        type="button"
+                        onClick={deleteAvatar}
+                        disabled={isUploadingAvatar}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
+                      >
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
                   <input
                     id="avatar-upload"
                     type="file"
                     accept="image/*"
                     onChange={handleFileChange}
                     className="hidden"
+                    disabled={isUploadingAvatar}
                   />
-                  <p className="text-xs text-gray-500 mt-2">JPG, PNG or GIF. Max 2MB.</p>
+                  <p className="text-xs text-gray-500">JPG, PNG or GIF. Max 2MB.</p>
                 </div>
               )}
             </div>
