@@ -1,15 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import PlaceholderPage from '@/components/dashboard/PlaceholderPage';
 
-export default async function SalesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+export default function SalesPage() {
 
   return (
-    <DashboardLayout userEmail={user.email || 'user@example.com'}>
+    
       <PlaceholderPage
         icon="💰"
         title="Sales Reports"
@@ -23,6 +17,6 @@ export default async function SalesPage() {
           'Export to Excel and PDF',
         ]}
       />
-    </DashboardLayout>
+    
   );
 }

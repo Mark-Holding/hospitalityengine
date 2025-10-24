@@ -1,15 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import PlaceholderPage from '@/components/dashboard/PlaceholderPage';
 
-export default async function HRPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+export default function HRPage() {
 
   return (
-    <DashboardLayout userEmail={user.email || 'user@example.com'}>
+    
       <PlaceholderPage
         icon="👔"
         title="HR Tools"
@@ -23,6 +17,6 @@ export default async function HRPage() {
           'Onboarding workflows',
         ]}
       />
-    </DashboardLayout>
+    
   );
 }

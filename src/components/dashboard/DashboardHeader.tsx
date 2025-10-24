@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
 import LogoutButton from '@/components/auth/LogoutButton';
@@ -11,52 +12,34 @@ interface DashboardHeaderProps {
   userEmail: string;
 }
 
-export default function DashboardHeader({ userEmail }: DashboardHeaderProps) {
+export default function DashboardHeader({ userEmail: _userEmail }: DashboardHeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userEmail, setUserEmail] = useState('');
   const supabase = createClient();
+
+  console.log('[DashboardHeader] Component rendered', {
+    profile: profile?.avatar_url,
+    timestamp: new Date().toISOString()
+  });
 
   // Fetch profile data on mount
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    console.log('[DashboardHeader] useEffect running - component mounted');
 
     const setupProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch initial profile
+      console.log('[DashboardHeader] Fetching profile for user:', user.id);
+      setUserEmail(user.email || 'user@example.com');
       await fetchProfile();
-
-      // Set up real-time subscription for this user's profile updates
-      channel = supabase
-        .channel('profile-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log('Profile updated via Realtime:', payload);
-            // Force a complete re-render by creating a new object with timestamp
-            const updatedProfile = { ...payload.new } as Profile;
-            setProfile(updatedProfile);
-          }
-        )
-        .subscribe((status) => {
-          console.log('Subscription status:', status);
-        });
     };
 
     setupProfile();
 
-    // Cleanup subscription on unmount
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      console.log('[DashboardHeader] Component unmounting');
     };
   }, []);
 
@@ -77,6 +60,33 @@ export default function DashboardHeader({ userEmail }: DashboardHeaderProps) {
       console.error('Error fetching profile:', error.message);
     }
   };
+
+  // Memoize avatar to prevent re-renders from triggering image reload
+  const avatarElement = useMemo(() => {
+    console.log('[DashboardHeader] Avatar useMemo recalculating', {
+      hasAvatar: !!profile?.avatar_url,
+      url: profile?.avatar_url
+    });
+
+    if (!profile?.avatar_url) {
+      const initials = profile?.first_name?.[0]?.toUpperCase() || userEmail?.[0]?.toUpperCase() || '?';
+      return (
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+          {initials}
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={profile.avatar_url}
+        alt="Profile"
+        className="w-10 h-10 rounded-full object-cover"
+        onLoad={() => console.log('[DashboardHeader] Avatar image loaded')}
+        onError={(e) => console.error('[DashboardHeader] Avatar image error:', e)}
+      />
+    );
+  }, [profile?.avatar_url, profile?.first_name, userEmail]);
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-64 z-30">
@@ -134,18 +144,7 @@ export default function DashboardHeader({ userEmail }: DashboardHeaderProps) {
                 {profile?.job_title || 'Administrator'}
               </p>
             </div>
-            {profile?.avatar_url ? (
-              <img
-                key={profile.updated_at}
-                src={profile.avatar_url}
-                alt="Profile"
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                {profile?.first_name?.[0]?.toUpperCase() || userEmail[0].toUpperCase()}
-              </div>
-            )}
+            {avatarElement}
           </div>
 
           <LogoutButton />

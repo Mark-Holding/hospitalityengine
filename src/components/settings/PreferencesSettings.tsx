@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { updateUserPreferences } from '@/lib/supabase/helpers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
 
 // Type definitions for user preferences
@@ -25,11 +27,13 @@ export default function PreferencesSettings() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const supabase = createClient();
+
+  const supabase: SupabaseClient<Database> = useMemo(() => createClient(), []);
 
   // Fetch preferences on mount
   useEffect(() => {
     fetchPreferences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPreferences = async () => {
@@ -41,23 +45,24 @@ export default function PreferencesSettings() {
         .from('user_preferences')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        setDbPreferences(data);
+        const typedData = data as UserPreferences;
+        setDbPreferences(typedData);
         setPreferences({
-          emailNotifications: data.email_notifications,
-          pushNotifications: data.push_notifications,
-          weeklyDigest: data.weekly_digest,
-          productUpdates: data.product_updates,
-          marketingEmails: data.marketing_emails,
-          language: data.language,
-          timezone: data.timezone,
-          currency: data.currency,
-          dateFormat: data.date_format,
-          theme: data.theme,
+          emailNotifications: typedData.email_notifications ?? true,
+          pushNotifications: typedData.push_notifications ?? false,
+          weeklyDigest: typedData.weekly_digest ?? true,
+          productUpdates: typedData.product_updates ?? true,
+          marketingEmails: typedData.marketing_emails ?? false,
+          language: typedData.language ?? 'en',
+          timezone: typedData.timezone ?? 'America/Los_Angeles',
+          currency: typedData.currency ?? 'USD',
+          dateFormat: typedData.date_format ?? 'MM/DD/YYYY',
+          theme: typedData.theme ?? 'light',
         });
       }
     } catch (error: any) {
@@ -92,10 +97,7 @@ export default function PreferencesSettings() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('user_preferences')
-        .update(updates)
-        .eq('user_id', user.id);
+      const { error } = await updateUserPreferences(supabase, user.id, updates);
 
       if (error) throw error;
 

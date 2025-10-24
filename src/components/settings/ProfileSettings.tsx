@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { updateUserProfile } from '@/lib/supabase/helpers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -27,7 +29,7 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const supabase = createClient();
+  const supabase: SupabaseClient<Database> = createClient();
 
   // Fetch profile data on mount
   useEffect(() => {
@@ -48,15 +50,16 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
       if (error) throw error;
 
       if (data) {
-        setProfile(data);
+        const typedData = data as Profile;
+        setProfile(typedData);
         setFormData({
-          firstName: data.first_name || '',
-          lastName: data.last_name || '',
-          phone: data.phone || '',
-          jobTitle: data.job_title || '',
-          bio: data.bio || '',
+          firstName: typedData.first_name || '',
+          lastName: typedData.last_name || '',
+          phone: typedData.phone || '',
+          jobTitle: typedData.job_title || '',
+          bio: typedData.bio || '',
         });
-        setAvatarPreview(data.avatar_url);
+        setAvatarPreview(typedData.avatar_url);
       }
     } catch (error: any) {
       console.error('Error fetching profile:', error.message);
@@ -158,10 +161,10 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
       if (deleteError) throw deleteError;
 
       // Update profile to remove avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: null, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+      const { error: updateError } = await updateUserProfile(supabase, user.id, {
+        avatar_url: null,
+        updated_at: new Date().toISOString()
+      });
 
       if (updateError) throw updateError;
 
@@ -205,10 +208,7 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
+      const { error } = await updateUserProfile(supabase, user.id, updates);
 
       if (error) throw error;
 

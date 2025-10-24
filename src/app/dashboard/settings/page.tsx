@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import SettingsLayout from '@/components/settings/SettingsLayout';
 import ProfileSettings from '@/components/settings/ProfileSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
@@ -31,25 +30,23 @@ export default function SettingsPage() {
   if (!userEmail) return null;
 
   return (
-    <DashboardLayout userEmail={userEmail}>
-      <SettingsLayout>
-        {(activeTab) => {
-          switch (activeTab) {
-            case 'profile':
-              return <ProfileSettings userEmail={userEmail} />;
-            case 'security':
-              return <SecuritySettings />;
-            case 'organization':
-              return <OrganizationSettings />;
-            case 'preferences':
-              return <PreferencesSettings />;
-            case 'billing':
-              return <BillingSettings />;
-            default:
-              return <ProfileSettings userEmail={userEmail} />;
-          }
-        }}
-      </SettingsLayout>
-    </DashboardLayout>
+    <SettingsLayout>
+      {(activeTab) => {
+        switch (activeTab) {
+          case 'profile':
+            return <ProfileSettings userEmail={userEmail} />;
+          case 'security':
+            return <SecuritySettings />;
+          case 'organization':
+            return <OrganizationSettings />;
+          case 'preferences':
+            return <PreferencesSettings />;
+          case 'billing':
+            return <BillingSettings />;
+          default:
+            return <ProfileSettings userEmail={userEmail} />;
+        }
+      }}
+    </SettingsLayout>
   );
 }

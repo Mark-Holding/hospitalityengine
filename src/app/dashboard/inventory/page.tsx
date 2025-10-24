@@ -1,15 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import PlaceholderPage from '@/components/dashboard/PlaceholderPage';
 
-export default async function InventoryPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+export default function InventoryPage() {
 
   return (
-    <DashboardLayout userEmail={user.email || 'user@example.com'}>
+    
       <PlaceholderPage
         icon="📦"
         title="Inventory Management"
@@ -23,6 +17,6 @@ export default async function InventoryPage() {
           'Integration with menu costing',
         ]}
       />
-    </DashboardLayout>
+    
   );
 }
