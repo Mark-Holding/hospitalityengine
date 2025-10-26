@@ -1,19 +1,35 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function LogoutButton() {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleLogout = async () => {
+    console.log('🚪 [LOGOUT] Starting logout process...');
     setLoading(true);
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+
+    try {
+      // Sign out from Supabase (this clears cookies)
+      console.log('🔓 [LOGOUT] Calling supabase.auth.signOut()...');
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('❌ [LOGOUT] Sign out error:', error.message, error);
+        throw error;
+      }
+
+      console.log('✅ [LOGOUT] Sign out successful');
+    } catch (error) {
+      console.error('❌ [LOGOUT] Exception during logout:', error);
+    } finally {
+      // Always redirect, even if signOut fails
+      // Force a hard navigation to clear all client state
+      console.log('↗️ [LOGOUT] Redirecting to /login (hard navigation)');
+      window.location.href = '/login';
+    }
   };
 
   return (

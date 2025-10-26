@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
@@ -11,18 +8,8 @@ export default function DashboardRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
-  const supabase = createClient();
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-      }
-    };
-    checkAuth();
-  }, [router, supabase]);
+  // Auth protection is handled by middleware.ts
+  // No need for client-side auth checks here
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SignupPage() {
@@ -12,7 +11,6 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -20,8 +18,11 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
 
+    console.log('📝 [SIGNUP] Starting signup process for:', email);
+
     // Validate passwords match
     if (password !== confirmPassword) {
+      console.warn('⚠️ [SIGNUP] Passwords do not match');
       setError('Passwords do not match');
       setLoading(false);
       return;
@@ -29,31 +30,48 @@ export default function SignupPage() {
 
     // Validate password strength
     if (password.length < 6) {
+      console.warn('⚠️ [SIGNUP] Password too short');
       setError('Password must be at least 6 characters long');
       setLoading(false);
       return;
     }
 
     try {
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('📧 [SIGNUP] Email redirect URL:', redirectUrl);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [SIGNUP] Sign up error:', error.message, error);
+        throw error;
+      }
+
+      console.log('✅ [SIGNUP] Sign up successful');
+      console.log('👤 [SIGNUP] User:', data.user?.email, 'ID:', data.user?.id);
+      console.log('🔐 [SIGNUP] Session:', !!data.session);
+      console.log('📧 [SIGNUP] Email confirmation required:', !data.session);
 
       if (data.user) {
-        setSuccess(true);
         // If email confirmation is disabled, redirect immediately
         if (data.session) {
-          router.push('/dashboard');
-          router.refresh();
+          console.log('↗️ [SIGNUP] Auto-login enabled, redirecting to /dashboard (hard navigation)');
+          // Use hard navigation to ensure cookies are properly set and middleware runs
+          window.location.href = '/dashboard';
+          return; // Don't set success state if we're redirecting
+        } else {
+          console.log('📬 [SIGNUP] Email confirmation required, showing success message');
+          setSuccess(true);
         }
       }
     } catch (err: any) {
+      console.error('❌ [SIGNUP] Exception during signup:', err);
       setError(err.message || 'An error occurred during signup');
     } finally {
       setLoading(false);

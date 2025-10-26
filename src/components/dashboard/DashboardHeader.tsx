@@ -18,29 +18,17 @@ export default function DashboardHeader({ userEmail: _userEmail }: DashboardHead
   const [userEmail, setUserEmail] = useState('');
   const supabase = createClient();
 
-  console.log('[DashboardHeader] Component rendered', {
-    profile: profile?.avatar_url,
-    timestamp: new Date().toISOString()
-  });
-
   // Fetch profile data on mount
   useEffect(() => {
-    console.log('[DashboardHeader] useEffect running - component mounted');
-
     const setupProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('[DashboardHeader] Fetching profile for user:', user.id);
       setUserEmail(user.email || 'user@example.com');
       await fetchProfile();
     };
 
     setupProfile();
-
-    return () => {
-      console.log('[DashboardHeader] Component unmounting');
-    };
   }, []);
 
   const fetchProfile = async () => {
@@ -63,11 +51,6 @@ export default function DashboardHeader({ userEmail: _userEmail }: DashboardHead
 
   // Memoize avatar to prevent re-renders from triggering image reload
   const avatarElement = useMemo(() => {
-    console.log('[DashboardHeader] Avatar useMemo recalculating', {
-      hasAvatar: !!profile?.avatar_url,
-      url: profile?.avatar_url
-    });
-
     if (!profile?.avatar_url) {
       const initials = profile?.first_name?.[0]?.toUpperCase() || userEmail?.[0]?.toUpperCase() || '?';
       return (
@@ -82,8 +65,6 @@ export default function DashboardHeader({ userEmail: _userEmail }: DashboardHead
         src={profile.avatar_url}
         alt="Profile"
         className="w-10 h-10 rounded-full object-cover"
-        onLoad={() => console.log('[DashboardHeader] Avatar image loaded')}
-        onError={(e) => console.error('[DashboardHeader] Avatar image error:', e)}
       />
     );
   }, [profile?.avatar_url, profile?.first_name, userEmail]);

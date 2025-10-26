@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -10,7 +9,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -18,21 +16,35 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
+    console.log('🔑 [LOGIN] Starting login process for:', email);
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [LOGIN] Sign in error:', error.message, error);
+        throw error;
+      }
 
-      if (data.user) {
-        router.push('/dashboard');
-        router.refresh();
+      console.log('✅ [LOGIN] Sign in successful');
+      console.log('👤 [LOGIN] User:', data.user?.email, 'ID:', data.user?.id);
+      console.log('🔐 [LOGIN] Session:', !!data.session);
+
+      if (data.user && data.session) {
+        console.log('↗️ [LOGIN] Redirecting to /dashboard (hard navigation)');
+        // Use hard navigation to ensure cookies are properly set and middleware runs
+        window.location.href = '/dashboard';
+      } else {
+        console.warn('⚠️ [LOGIN] No user or session in response data');
+        setError('Login failed - no session created');
+        setLoading(false);
       }
     } catch (err: any) {
+      console.error('❌ [LOGIN] Exception during login:', err);
       setError(err.message || 'An error occurred during login');
-    } finally {
       setLoading(false);
     }
   };
