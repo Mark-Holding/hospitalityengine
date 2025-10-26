@@ -1,20 +1,19 @@
-'use client';
-
 import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { createClient } from '@/lib/supabase/server';
 
-export default function DashboardRootLayout({
+export default async function DashboardRootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Auth protection is handled by middleware.ts
-  // No need for client-side auth checks here
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <DashboardHeader userEmail="" />
+      <DashboardHeader userEmail={user?.email || ''} userId={user?.id || ''} />
       <main className="ml-64 mt-16 p-6">
         {children}
       </main>

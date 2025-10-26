@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function OrganizationSettings() {
   const [formData, setFormData] = useState({
@@ -72,10 +73,13 @@ export default function OrganizationSettings() {
             <div className="flex items-center gap-6">
               <div className="relative">
                 {logoPreview ? (
-                  <img
+                  <Image
                     src={logoPreview}
                     alt="Business Logo"
-                    className="w-24 h-24 rounded-lg object-cover border border-gray-200"
+                    width={96}
+                    height={96}
+                    className="rounded-lg object-cover border border-gray-200"
+                    unoptimized={logoPreview.startsWith('data:')}
                   />
                 ) : (
                   <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200">

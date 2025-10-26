@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize compilation in development
+  experimental: {
+    optimizePackageImports: ['@supabase/ssr', '@supabase/supabase-js'],
+  },
+  // Enable React compiler optimizations
+  reactStrictMode: true,
 };
 
 export default nextConfig;

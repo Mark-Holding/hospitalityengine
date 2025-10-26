@@ -10,44 +10,38 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface DashboardHeaderProps {
   userEmail: string;
+  userId: string;
 }
 
-export default function DashboardHeader({ userEmail: _userEmail }: DashboardHeaderProps) {
+export default function DashboardHeader({ userEmail, userId }: DashboardHeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [userEmail, setUserEmail] = useState('');
-  const supabase = createClient();
 
-  // Fetch profile data on mount
+  // Fetch profile data only once on mount
   useEffect(() => {
-    const setupProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!userId) return;
 
-      setUserEmail(user.email || 'user@example.com');
-      await fetchProfile();
+    const fetchProfile = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error.message);
+          return;
+        }
+        if (data) setProfile(data);
+      } catch (error: any) {
+        console.error('Error fetching profile:', error.message);
+      }
     };
 
-    setupProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-      if (data) setProfile(data);
-    } catch (error: any) {
-      console.error('Error fetching profile:', error.message);
-    }
-  };
+    fetchProfile();
+  }, [userId]);
 
   // Memoize avatar to prevent re-renders from triggering image reload
   const avatarElement = useMemo(() => {
@@ -61,11 +55,16 @@ export default function DashboardHeader({ userEmail: _userEmail }: DashboardHead
     }
 
     return (
-      <img
-        src={profile.avatar_url}
-        alt="Profile"
-        className="w-10 h-10 rounded-full object-cover"
-      />
+      <div className="w-10 h-10 rounded-full overflow-hidden">
+        <Image
+          src={profile.avatar_url}
+          alt="Profile"
+          width={40}
+          height={40}
+          className="w-full h-full object-cover"
+          unoptimized={profile.avatar_url.includes('supabase.co')}
+        />
+      </div>
     );
   }, [profile?.avatar_url, profile?.first_name, userEmail]);
 

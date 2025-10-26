@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { updateUserProfile } from '@/lib/supabase/helpers';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -280,10 +281,13 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
             <div className="flex items-center gap-6">
               <div className="relative">
                 {avatarPreview ? (
-                  <img
+                  <Image
                     src={avatarPreview}
                     alt="Avatar"
-                    className="w-24 h-24 rounded-full object-cover"
+                    width={96}
+                    height={96}
+                    className="rounded-full object-cover"
+                    unoptimized={avatarPreview.startsWith('data:') || avatarPreview.includes('supabase.co')}
                   />
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
