@@ -35,6 +35,7 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
   // Fetch profile data on mount
   useEffect(() => {
     fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProfile = async () => {
@@ -63,7 +64,6 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
         setAvatarPreview(typedData.avatar_url);
       }
     } catch (error: any) {
-      console.error('Error fetching profile:', error.message);
       setMessage({ type: 'error', text: 'Failed to load profile' });
     }
   };
@@ -131,7 +131,6 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
 
       return publicUrl;
     } catch (error: any) {
-      console.error('Error uploading avatar:', error.message);
       throw error;
     } finally {
       setIsUploadingAvatar(false);
@@ -174,7 +173,6 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
       setMessage({ type: 'success', text: 'Avatar removed successfully!' });
       await fetchProfile();
     } catch (error: any) {
-      console.error('Error deleting avatar:', error.message);
       setMessage({ type: 'error', text: error.message || 'Failed to delete avatar' });
     } finally {
       setIsUploadingAvatar(false);
@@ -218,7 +216,6 @@ export default function ProfileSettings({ userEmail }: ProfileSettingsProps) {
       setAvatarFile(null); // Clear the file after successful upload
       await fetchProfile(); // Refresh profile data
     } catch (error: any) {
-      console.error('Error updating profile:', error.message);
       setMessage({ type: 'error', text: error.message || 'Failed to update profile' });
     } finally {
       setIsSaving(false);

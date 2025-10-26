@@ -14,7 +14,6 @@ export default function DashboardError({
 
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error('Dashboard error:', error);
   }, [error]);
 
   return (

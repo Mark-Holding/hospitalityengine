@@ -8,26 +8,19 @@ export default function LogoutButton() {
   const supabase = createClient();
 
   const handleLogout = async () => {
-    console.log('🚪 [LOGOUT] Starting logout process...');
     setLoading(true);
 
     try {
-      // Sign out from Supabase (this clears cookies)
-      console.log('🔓 [LOGOUT] Calling supabase.auth.signOut()...');
       const { error } = await supabase.auth.signOut();
 
       if (error) {
-        console.error('❌ [LOGOUT] Sign out error:', error.message, error);
         throw error;
       }
-
-      console.log('✅ [LOGOUT] Sign out successful');
     } catch (error) {
-      console.error('❌ [LOGOUT] Exception during logout:', error);
+      // Exception during logout
     } finally {
       // Always redirect, even if signOut fails
       // Force a hard navigation to clear all client state
-      console.log('↗️ [LOGOUT] Redirecting to /login (hard navigation)');
       window.location.href = '/login';
     }
   };

@@ -66,7 +66,6 @@ export default function PreferencesSettings() {
         });
       }
     } catch (error: any) {
-      console.error('Error fetching preferences:', error.message);
       setMessage({ type: 'error', text: 'Failed to load preferences' });
     }
   };
@@ -104,7 +103,6 @@ export default function PreferencesSettings() {
       setMessage({ type: 'success', text: 'Preferences updated successfully!' });
       await fetchPreferences(); // Refresh preferences data
     } catch (error: any) {
-      console.error('Error updating preferences:', error.message);
       setMessage({ type: 'error', text: error.message || 'Failed to update preferences' });
     } finally {
       setIsSaving(false);

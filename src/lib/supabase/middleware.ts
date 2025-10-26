@@ -39,19 +39,12 @@ export async function updateSession(request: NextRequest) {
   try {
     const { data, error } = await supabase.auth.getUser();
 
-    if (error && isDev) {
-      console.error('❌ [MIDDLEWARE] Auth error:', error.message);
-    }
-
     if (!error && data?.user) {
       user = data.user;
     }
   } catch (error) {
     // Gracefully handle auth errors (e.g., expired tokens during logout)
     // User will be treated as not authenticated
-    if (isDev) {
-      console.error('❌ [MIDDLEWARE] Exception in getUser():', error);
-    }
     user = null;
   }
 

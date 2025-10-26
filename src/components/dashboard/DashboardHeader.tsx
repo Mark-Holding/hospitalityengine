@@ -31,12 +31,11 @@ export default function DashboardHeader({ userEmail, userId }: DashboardHeaderPr
           .single();
 
         if (error) {
-          console.error('Error fetching profile:', error.message);
           return;
         }
         if (data) setProfile(data);
       } catch (error: any) {
-        console.error('Error fetching profile:', error.message);
+        // Error fetching profile
       }
     };
 

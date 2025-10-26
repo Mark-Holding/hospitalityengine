@@ -18,7 +18,6 @@ export default function SecuritySettings() {
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement password change
-    console.log('Password change submitted');
   };
 
   const handleRevokeSession = (sessionId: number) => {
