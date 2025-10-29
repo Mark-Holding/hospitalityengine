@@ -1,6 +1,7 @@
 import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { createClient } from '@/lib/supabase/server';
+import { BusinessProvider } from '@/contexts/BusinessContext';
 
 export default async function DashboardRootLayout({
   children,
@@ -11,12 +12,14 @@ export default async function DashboardRootLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <DashboardHeader userEmail={user?.email || ''} userId={user?.id || ''} />
-      <main className="ml-64 mt-16 p-6">
-        {children}
-      </main>
-    </div>
+    <BusinessProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Sidebar />
+        <DashboardHeader userEmail={user?.email || ''} userId={user?.id || ''} />
+        <main className="ml-64 mt-16 p-6">
+          {children}
+        </main>
+      </div>
+    </BusinessProvider>
   );
 }

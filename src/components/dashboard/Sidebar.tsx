@@ -48,7 +48,7 @@ export default function Sidebar() {
       title: 'SETTINGS',
       items: [
         { name: 'Account', href: '/dashboard/settings', icon: '⚙️' },
-        { name: 'Team', href: '/dashboard/team', icon: '👨‍👩‍👧‍👦' },
+        { name: 'Team', href: '/dashboard/settings/team', icon: '👨‍👩‍👧‍👦' },
       ],
     },
   ];

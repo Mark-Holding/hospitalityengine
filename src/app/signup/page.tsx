@@ -50,8 +50,8 @@ export default function SignupPage() {
       if (data.user) {
         // If email confirmation is disabled, redirect immediately
         if (data.session) {
-          // Use hard navigation to ensure cookies are properly set and middleware runs
-          window.location.href = '/dashboard';
+          // New users don't have a business yet, redirect to onboarding
+          window.location.href = '/onboarding';
           return;
         } else {
           setSuccess(true);

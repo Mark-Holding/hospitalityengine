@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
 import LogoutButton from '@/components/auth/LogoutButton';
+import { BusinessSwitcher } from '@/components/business/BusinessSwitcher';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -71,7 +72,7 @@ export default function DashboardHeader({ userEmail, userId }: DashboardHeaderPr
     <header className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-64 z-30">
       <div className="h-full px-6 flex items-center justify-between">
         {/* Search */}
-        <div className="flex-1 max-w-2xl">
+        <div className="flex-1 max-w-xl">
           <div className="relative">
             <input
               type="text"
@@ -94,6 +95,11 @@ export default function DashboardHeader({ userEmail, userId }: DashboardHeaderPr
               />
             </svg>
           </div>
+        </div>
+
+        {/* Business Switcher */}
+        <div className="ml-6 border-l border-gray-200 pl-6">
+          <BusinessSwitcher />
         </div>
 
         {/* Right side - Notifications & User */}

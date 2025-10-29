@@ -58,6 +58,29 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Business onboarding check - authenticated users going to dashboard need a business
+  if (
+    user &&
+    request.nextUrl.pathname.startsWith('/dashboard') &&
+    !request.nextUrl.pathname.startsWith('/dashboard/onboarding')
+  ) {
+    // Check if user has any business
+    const { data: membership, error: memberError } = await supabase
+      .from('business_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    // If no business membership found, redirect to onboarding
+    if (!memberError && !membership) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Auth routes - redirect to dashboard if already authenticated
   if (
     user &&
@@ -67,6 +90,27 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
+  }
+
+  // Onboarding route - redirect to dashboard if user already has a business
+  if (
+    user &&
+    request.nextUrl.pathname === '/onboarding'
+  ) {
+    const { data: membership } = await supabase
+      .from('business_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    // If user has a business, redirect to dashboard
+    if (membership) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
